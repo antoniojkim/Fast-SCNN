@@ -161,7 +161,7 @@ class FeatureFusionModule(torch.nn.Module):
 
 
 class FastSCNN(torch.nn.Module):
-    def __init__(self, image_height=1024, image_width=2048, image_channels=3, **kwargs):
+    def __init__(self, image_height=1024, image_width=2048, image_channels=3, num_classes=10, **kwargs):
         super(FastSCNN, self).__init__()
         
         self.learning_to_downsample = torch.nn.Sequential(
@@ -200,7 +200,7 @@ class FastSCNN(torch.nn.Module):
             ],
             torch.nn.Dropout(0.1),
             torch.nn.Conv2d(in_channels  = 128,
-                            out_channels = 5,
+                            out_channels = num_classes,
                             kernel_size  = 1)
         )
         
