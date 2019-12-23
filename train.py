@@ -103,13 +103,15 @@ training_dataloader = torch.utils.data.DataLoader(
 # In[8]:
 
 
-val_dataset = Dataset(dataset_path, crop_height, crop_width, mode="train")
+val_dataset = Dataset(dataset_path, crop_height, crop_width, mode="val")
 val_dataloader = torch.utils.data.DataLoader(
     val_dataset,
     batch_size  = 1,
     num_workers = num_workers,
     shuffle     = True
 )
+
+num_validation = min(num_validation, len(val_dataloader))
 
 
 # # Train
@@ -167,16 +169,15 @@ iou_per_class = lambda hist: (np.diag(hist) + 1e-5) / (hist.sum(1) + hist.sum(0)
 
 def run_validation(epoch):
 
-    with torch.no_grad():
+    with torch.no_grad(), tqdm(total=num_validation, position=0, leave=False) as val_progress:
         model.eval()
     
-        val_progress = tqdm(total=num_validation, leave=False)
         val_progress.set_description('validation epoch %d' % epoch)
         
         precisions = []
         hist = np.zeros((num_classes, num_classes))
 
-        for data, label in val_dataloader:
+        for i, (data, label) in enumerate(val_dataloader):
             
             if use_gpu:
                 data = data.cuda()
@@ -193,22 +194,23 @@ def run_validation(epoch):
             label = label.squeeze()
             label = np.array(label)
 
-            precisions.append(np.sum(output == label) / len(label))
+            precisions.append(np.sum(output == label) / np.prod(label.shape))
             hist += compute_hist(output.flatten(), label.flatten(), num_classes)
             
-            val_progress.update()
             val_progress.set_postfix(precision='%.6f' % np.mean(precisions))
+            val_progress.update()
             
-            if len(precisions) > num_validation:
+            if i >= num_validation:
                 break
             
+            if len(precisions) > num_validation:
+                raise AssertionError("Validating more than wanted")
         
         precision = np.mean(precisions)
-        miou = np.mean(iou_per_class(hist)[:-1])
-            
-        val_progress.close()
+        iou = iou_per_class(hist)[:-1]
+        miou = np.mean(iou)
     
-    return precision, miou
+    return precision, miou, iou
 
 
 # ## Training Loop
@@ -217,6 +219,7 @@ def run_validation(epoch):
 
 
 optimizer = torch.optim.SGD(model.parameters(), learning_rate, momentum=0.9, weight_decay=1e-4)
+optimizer.zero_grad()
 
 
 # In[16]:
@@ -251,7 +254,7 @@ lr_scheduler = poly_lr_scheduler(optimizer,
                                  niters_per_epoch = len(training_dataloader))
 
 
-# In[ ]:
+# In[18]:
 
 
 with open(log_file, 'w') as log:
@@ -268,45 +271,48 @@ with open(log_file, 'w') as log:
     step = 0
     for epoch in range(epoch_start, num_epochs):
         
-        progress = tqdm(total=len(training_dataloader), position=0, leave=False)
-        progress.set_description('epoch %d, lr %f' % (epoch, lr_scheduler.curr_lr))
+        with tqdm(total=len(training_dataloader), position=0, leave=False) as progress:
+            
+            progress.set_description('epoch %d, lr %f' % (epoch, lr_scheduler.curr_lr))
 
-        for images, labels in training_dataloader:
-            lr_scheduler()  # Updated learning rate
+            for i, (images, labels) in enumerate(training_dataloader):
+                lr_scheduler()  # Updated learning rate
 
-            if use_gpu:
-                images = images.cuda()
-                labels = labels.cuda()
+                if use_gpu:
+                    images = images.cuda()
+                    labels = labels.cuda()
 
-            output = model(images)
-            loss = criterion(output, labels)
+                output = model(images)
+                loss = criterion(output, labels)
 
-            progress.update(batch_size)
-            progress.set_postfix(loss='%.6f' % loss)
+                progress.set_postfix(loss='%.6f' % loss)
+                progress.update()
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                loss.backward()
 
-            write_log("{step},{epoch},{loss}".format(step=step, epoch=epoch, loss=loss.item()))
-            step += 1
-        
-        
-        if epoch > 0 and epoch % checkpoint_step == 0:
-            if not os.path.isdir(save_model_path):
-                os.mkdir(save_model_path)
-                
-            torch.save(model.module.state_dict(),
-                       os.path.join(save_model_path, 'latest_model.pt'))
+                if i % 3 == 0:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    progress.set_description('epoch %d, lr %f' % (epoch, lr_scheduler.curr_lr))
+
+                write_log("{step},{epoch},{loss}".format(step=step, epoch=epoch, loss=loss.item()))
+                step += 1
+
+
+
+            if epoch > 0 and epoch % checkpoint_step == 0:
+                if not os.path.isdir(save_model_path):
+                    os.mkdir(save_model_path)
+
+                torch.save(model.module.state_dict(),
+                           os.path.join(save_model_path, 'latest_model.pt'))
             
             
         write_log("time,{time}".format(time=time.time()))
             
-        progress.close()
-            
         if epoch % validation_step == 0:
             
-            precision, miou = run_validation(epoch)
+            precision, miou, iou = run_validation(epoch)
             if miou > max_miou:
                 max_miou = miou
                 
@@ -318,5 +324,6 @@ with open(log_file, 'w') as log:
                 
             write_log("precision,{epoch},{precision}".format(epoch=epoch, precision=precision))
             write_log("miou,{epoch},{miou}".format(epoch=epoch, miou=miou))
+            write_log("iou,{epoch},{iou}".format(epoch=epoch, iou=iou))
             write_log("time,{time}".format(time=time.time()))       
 
