@@ -1,6 +1,8 @@
 torch
 torchvision
 numpy
-numba
+matplotlib
+ipywidgets
 pyyaml
 pillow
+tqdm

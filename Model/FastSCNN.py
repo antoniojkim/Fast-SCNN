@@ -8,27 +8,6 @@ import torch
 import torch.nn.functional as F
 
 
-# In[2]:
-
-
-class DSConv(torch.nn.Module):
-    
-    def __init__(self, in_channels, out_channels, stride=1, **kwargs):
-        super(DSConv, self).__init__()
-        
-        self.conv = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels, in_channels, 3, stride, 1, groups=in_channels, bias=False),
-            torch.nn.BatchNorm2d(in_channels),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Conv2d(in_channels, out_channels, 1, bias=False),
-            torch.nn.BatchNorm2d(out_channels),
-            torch.nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        return self.conv(x)
-
-
 # In[3]:
 
 

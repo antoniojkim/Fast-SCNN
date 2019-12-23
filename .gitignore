@@ -1,3 +1,5 @@
 *pycache*
 *ipynb_checkpoint*
 params.yml
+checkpoints/
+log.txt
