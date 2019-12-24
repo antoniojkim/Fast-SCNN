@@ -17,6 +17,18 @@ def one_hot_encode(label, class_dict):
         
     return encoded
 
+reverse_one_hot = lambda image: torch.argmax(image.permute(1, 2, 0), dim=-1)
+
+
+def colourize(output, class_dict):
+    colourized = np.zeros(list(output.shape) + [3], np.uint32)
+    for index, colour in enumerate(class_dict.values(), 1):
+        indices = output == index
+        colourized[indices] = colour
+        
+    return colourized
+
+
 
 class Dataset:
     
@@ -36,10 +48,13 @@ class Dataset:
         self.images = list(set(os.listdir(os.path.join(dataset_path, mode))) &
                            set(os.listdir(os.path.join(dataset_path, f"{mode}_labels"))))
         
+        self.normalization_mean = (0.485, 0.456, 0.406)
+        self.normalization_std = (0.229, 0.224, 0.225)
+        
         # normalization
         self.to_tensor = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            transforms.Normalize(self.normalization_mean, self.normalization_std)
         ])
         
         self.scale = (0.5, 1, 1.25, 1.5, 1.75, 2)
@@ -83,12 +98,12 @@ class Dataset:
                                                       self.crop_height, self.crop_width)
             
                     
-        if self.mode == "train"and np.random.random() > 0.5:
-            image = transforms.RandomHorizontalFlip(p=1)(image)
-            label = transforms.RandomHorizontalFlip(p=1)(label)
+        if self.mode == "train" and np.random.random() > 0.5:
+            image = transforms.functional.hflip(image)
+            label = transforms.functional.hflip(label)
             
             
-        image = self.to_tensor(image).float();
+        image = self.normalize(image).float();
         label = np.array(label)
         
         # One hot encode for cross entropy loss
@@ -97,4 +112,15 @@ class Dataset:
         label = torch.from_numpy(label).long()
         
         return image, label
-        
+    
+    
+    def normalize(self, image):
+        return self.to_tensor(image)
+    
+    
+    def denormalize(self, image):
+        denormalized = image.new(*image.size())
+        for i, (mean, std) in enumerate(zip(self.normalization_mean, self.normalization_std)):
+            denormalized[i, :, :] = image[i, :, :] * std + mean
+
+        return denormalized
