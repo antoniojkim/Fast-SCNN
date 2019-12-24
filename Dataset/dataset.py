@@ -80,9 +80,10 @@ class Dataset:
             image = transforms.RandomCrop((self.crop_height, self.crop_width), pad_if_needed=True)(image)
             
         else:
-            image = transforms.functional.crop(image, image.size[0] - self.crop_height,
-                                                      (image.size[1] - self.crop_width) // 2,
-                                                      self.crop_height, self.crop_width)
+            image = transforms.CenterCrop((self.crop_height, self.crop_width))(image)
+#             image = transforms.functional.crop(image, image.size[0] - self.crop_height,
+#                                                       (image.size[1] - self.crop_width) // 2,
+#                                                       self.crop_height, self.crop_width)
         
         
         label = Image.open(os.path.join(self.dataset_path, f"{self.mode}_labels", self.images[index]))
@@ -93,9 +94,10 @@ class Dataset:
             label = transforms.RandomCrop((self.crop_height, self.crop_width), pad_if_needed=True)(label)
             
         else:
-            label = transforms.functional.crop(label, label.size[0] - self.crop_height,
-                                                      (label.size[1] - self.crop_width) // 2,
-                                                      self.crop_height, self.crop_width)
+            label = transforms.CenterCrop((self.crop_height, self.crop_width))(label)
+#             label = transforms.functional.crop(label, label.size[0] - self.crop_height,
+#                                                       (label.size[1] - self.crop_width) // 2,
+#                                                       self.crop_height, self.crop_width)
             
                     
         if self.mode == "train" and np.random.random() > 0.5:
