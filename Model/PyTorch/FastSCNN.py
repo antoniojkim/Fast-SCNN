@@ -94,7 +94,7 @@ class PyramidPooling(torch.nn.Module):
         return avgpool(x)
 
     def upsample(self, x, size):
-        return F.interpolate(x, list(map(int, size)), mode='nearest') # mode='bilinear', align_corners=True)
+        return F.interpolate(x, list(map(int, size)), mode='bilinear', align_corners=True)
 
     def forward(self, x):
         size = x.size()[2:]
@@ -128,7 +128,7 @@ class FeatureFusionModule(torch.nn.Module):
         self.relu = torch.nn.ReLU(inplace=True)
 
     def forward(self, higher_res_feature, lower_res_feature):
-        lower_res_feature = F.interpolate(lower_res_feature, scale_factor=4, mode='nearest') # mode='bilinear', align_corners=True)
+        lower_res_feature = F.interpolate(lower_res_feature, scale_factor=4, mode='bilinear', align_corners=True)
         lower_res_feature = self.dwconv(lower_res_feature)
         lower_res_feature = self.conv_lower_res(lower_res_feature)
 
@@ -193,7 +193,7 @@ class FastSCNN(torch.nn.Module):
         x = self.classifier(x)
         
 #         outputs = []
-        x = F.interpolate(x, list(map(int, size)), mode='nearest') # mode='bilinear', align_corners=True)
+        x = F.interpolate(x, list(map(int, size)), mode='bilinear', align_corners=True)
 #         outputs.append(x)
         
         return x
