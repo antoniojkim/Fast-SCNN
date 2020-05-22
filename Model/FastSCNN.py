@@ -1,1 +1,1 @@
-/home/antoniojkim/antonio/PyTorch/Fast-SCNN/Model/PyTorch/FastSCNN.py
+/home/antoniojkim/wato3/PyTorch/Fast-SCNN/Model/PyTorch/FastSCNN.py

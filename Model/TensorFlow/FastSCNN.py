@@ -3,55 +3,78 @@
 
 # In[1]:
 
-
-import torch
-import torch.nn.functional as F
+import tensorflow as tf
 
 import numpy as np
+
+# In[2]:
+
+Module = tf.Module
+
+def Sequential(*layers):
+    return tf.keras.Sequential(layers=layers)
+
+def Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros'):
+    pass
+
+def BatchNorm2d(out_channels):
+    pass
+
+def ReLU(inplace=True):
+    pass
+
+def AdaptiveAvgPool2d(size):
+    pass
+
+def Concat(args):
+    pass
+
+def Dropout(rate):
+    pass
 
 # In[3]:
 
 
 def Conv2dBatch(in_channels, out_channels, kernel_size=3, stride=1, padding=0, **kwargs):
-    return torch.nn.Sequential(
-        torch.nn.Conv2d(in_channels  = in_channels,
-                        out_channels = out_channels,
-                        kernel_size  = kernel_size,
-                        stride       = stride,
-                        padding      = padding,
-                        bias         = False),
-        torch.nn.BatchNorm2d(out_channels),
-        torch.nn.ReLU(inplace=True)
+    return Sequential(
+        Conv2d(in_channels  = in_channels,
+               out_channels = out_channels,
+               kernel_size  = kernel_size,
+               stride       = stride,
+               padding      = padding,
+               bias         = False),
+        BatchNorm2d(out_channels),
+        ReLU(inplace=True)
     )
 
 def DSConv(in_channels, out_channels, stride=1, **kwargs):
-    return torch.nn.Sequential(
-        torch.nn.Conv2d(in_channels, in_channels, 3, stride, 1, groups=in_channels, bias=False),
-        torch.nn.BatchNorm2d(in_channels),
-        torch.nn.ReLU(inplace=True),
-        torch.nn.Conv2d(in_channels, out_channels, 1, bias=False),
-        torch.nn.BatchNorm2d(out_channels),
-        torch.nn.ReLU(inplace=True)
+    return Sequential(
+        Conv2d(in_channels, in_channels, 3, stride, 1, groups=in_channels, bias=False),
+        BatchNorm2d(in_channels),
+        ReLU(inplace=True),
+        Conv2d(in_channels, out_channels, 1, bias=False),
+        BatchNorm2d(out_channels),
+        ReLU(inplace=True)
     )
 
 def DWConv(in_channels, out_channels, stride=1, **kwargs):
-    return torch.nn.Sequential(
-        torch.nn.Conv2d(in_channels, in_channels, 3, stride, 1, groups=in_channels, bias=False),
-        torch.nn.BatchNorm2d(out_channels),
-        torch.nn.ReLU(inplace=True)
+    return Sequential(
+        Conv2d(in_channels, in_channels, 3, stride, 1, groups=in_channels, bias=False),
+        BatchNorm2d(out_channels),
+        ReLU(inplace=True)
     )
 
 
 # In[4]:
 
 
-class Bottleneck(torch.nn.Module):
+class Bottleneck(Module):
     
     def __init__(self, in_channels, out_channels, t=6, stride=2, **kwargs):
         super(Bottleneck, self).__init__()
         
         self.shortcut = stride == 1 and in_channels == out_channels
-        self.block = torch.nn.Sequential(
+        self.block = Sequential(
             Conv2dBatch(in_channels  = in_channels,
                         out_channels = in_channels * t,
                         kernel_size  = 1,
@@ -59,11 +82,11 @@ class Bottleneck(torch.nn.Module):
             DWConv(in_channels  = in_channels * t,
                    out_channels = in_channels * t,
                    stride       = stride),
-            torch.nn.Conv2d(in_channels  = in_channels * t,
+            Conv2d(in_channels  = in_channels * t,
                             out_channels = out_channels,
                             kernel_size  = 1,
                             bias         = False),
-            torch.nn.BatchNorm2d(out_channels)
+            BatchNorm2d(out_channels)
         )
         
     def forward(self, x):
@@ -77,7 +100,7 @@ class Bottleneck(torch.nn.Module):
 # In[5]:
 
 
-class PyramidPooling(torch.nn.Module):
+class PyramidPooling(Module):
     """Pyramid pooling module"""
 
     def __init__(self, in_channels, out_channels, **kwargs):
@@ -90,7 +113,7 @@ class PyramidPooling(torch.nn.Module):
         self.out   = Conv2dBatch(in_channels * 2, out_channels, 1)
 
     def pool(self, x, size):
-        avgpool = torch.nn.AdaptiveAvgPool2d(size)
+        avgpool = AdaptiveAvgPool2d(size)
         return avgpool(x)
 
     def upsample(self, x, size):
@@ -102,7 +125,7 @@ class PyramidPooling(torch.nn.Module):
         feat2 = self.upsample(self.conv2(self.pool(x, 2)), size)
         feat3 = self.upsample(self.conv3(self.pool(x, 3)), size)
         feat4 = self.upsample(self.conv4(self.pool(x, 6)), size)
-        x = torch.cat([x, feat1, feat2, feat3, feat4], dim=1)
+        x = Concat([x, feat1, feat2, feat3, feat4], dim=1)
         x = self.out(x)
         
         return x
@@ -111,21 +134,21 @@ class PyramidPooling(torch.nn.Module):
 # In[6]:
 
 
-class FeatureFusionModule(torch.nn.Module):
+class FeatureFusionModule(Module):
 
     def __init__(self, highter_in_channels, lower_in_channels, out_channels, scale_factor=4, **kwargs):
         super(FeatureFusionModule, self).__init__()
         self.scale_factor = scale_factor
         self.dwconv = DWConv(lower_in_channels, out_channels, 1)
-        self.conv_lower_res = torch.nn.Sequential(
-            torch.nn.Conv2d(out_channels, out_channels, 1),
-            torch.nn.BatchNorm2d(out_channels)
+        self.conv_lower_res = Sequential(
+            Conv2d(out_channels, out_channels, 1),
+            BatchNorm2d(out_channels)
         )
-        self.conv_higher_res = torch.nn.Sequential(
-            torch.nn.Conv2d(highter_in_channels, out_channels, 1),
-            torch.nn.BatchNorm2d(out_channels)
+        self.conv_higher_res = Sequential(
+            Conv2d(highter_in_channels, out_channels, 1),
+            BatchNorm2d(out_channels)
         )
-        self.relu = torch.nn.ReLU(inplace=True)
+        self.relu = ReLU(inplace=True)
 
     def forward(self, higher_res_feature, lower_res_feature):
         lower_res_feature = F.interpolate(lower_res_feature, scale_factor=4, mode='nearest') # mode='bilinear', align_corners=True)
@@ -140,11 +163,11 @@ class FeatureFusionModule(torch.nn.Module):
 # In[7]:
 
 
-class FastSCNN(torch.nn.Module):
+class FastSCNN(Module):
     def __init__(self, image_height=1024, image_width=2048, image_channels=3, num_classes=10, **kwargs):
         super(FastSCNN, self).__init__()
         
-        self.learning_to_downsample = torch.nn.Sequential(
+        self.learning_to_downsample = Sequential(
             Conv2dBatch(in_channels  = image_channels,
                         out_channels = 32,
                         kernel_size  = 3,
@@ -157,7 +180,7 @@ class FastSCNN(torch.nn.Module):
                    stride       = 2)
         )
         
-        self.global_feature_extractor = torch.nn.Sequential(*[
+        self.global_feature_extractor = Sequential(*[
                 Bottleneck(in_channels  = in_channel,
                            out_channels = out_channel,
                            stride       = stride)
@@ -172,14 +195,14 @@ class FastSCNN(torch.nn.Module):
 
         self.feature_fusion_module = FeatureFusionModule(64, 128, 128)
         
-        self.classifier = torch.nn.Sequential(*[
+        self.classifier = Sequential(*[
                 DSConv(in_channels  = 128,
                        out_channels = 128,
                        kernel_size  = 1)
                 for n in range(2)
             ],
-            torch.nn.Dropout(0.1),
-            torch.nn.Conv2d(in_channels  = 128,
+            Dropout(0.1),
+            Conv2d(in_channels  = 128,
                             out_channels = num_classes,
                             kernel_size  = 1)
         )
@@ -215,4 +238,7 @@ class FastSCNN(torch.nn.Module):
 #     model.eval()
     
 #     label = model(img)
+
+if __name__ == "__main__":
+    model = FastSCNN()
 
