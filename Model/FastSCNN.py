@@ -1,1 +1,0 @@
-/home/antoniojkim/wato3/PyTorch/Fast-SCNN/Model/PyTorch/FastSCNN.py

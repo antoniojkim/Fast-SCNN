@@ -1,8 +1,10 @@
+git+https://github.com/antoniojkim/TorchX.git
+git+https://github.com/antoniojkim/Sandboxer.git
+ipywidgets
+matplotlib
+numpy
+pillow
+pyyaml
 torch
 torchvision
-numpy
-matplotlib
-ipywidgets
-pyyaml
-pillow
 tqdm
