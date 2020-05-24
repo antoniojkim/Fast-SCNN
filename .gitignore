@@ -2,4 +2,5 @@
 *ipynb_checkpoint*
 params.yml
 *checkpoints/
+data/
 log.txt
