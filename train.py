@@ -11,7 +11,7 @@ import torch
 import torchx
 from tqdm import tqdm, trange
 
-from FastSCNN import FastSCNN, Dataset
+from FastSCNN import AudiDataset, FastSCNN
 
 
 # # Parameters
@@ -39,7 +39,6 @@ log = params.get_logger("FastSCNN", overwrite=True)
 
 # In[5]:
 
-
 # Check to see if all required paths are present
 if not os.path.join("data", "class_list.json"):
     raise AssertionError(os.path.join("data", "class_list.json") + " does not exist")
@@ -61,7 +60,7 @@ num_classes = 2 if params.single_class else len(Dataset.classes) + 1
 
 
 train_dataloader = torch.utils.data.DataLoader(
-    Dataset(
+    AudiDataset(
         params.crop_height,
         params.crop_width,
         params.resize_scale,
@@ -80,7 +79,7 @@ train_dataloader = torch.utils.data.DataLoader(
 # In[8]:
 
 
-val_dataset = Dataset(
+val_dataset = AudiDataset(
     params.crop_height,
     params.crop_width,
     params.resize_scale,
@@ -126,7 +125,7 @@ model = to_device(model)
 # In[11]:
 
 
-model.num_params()
+print("Number of Trainable Parameters: ", model.num_params())
 
 
 # In[12]:
@@ -137,26 +136,9 @@ if params.pretrained_model_path is not None:
     print("loading model from %s ..." % params.pretrained_model_path)
     model.load(params.pretrained_model_path)
 
+model.save(os.path.join(params.save_model_path, f"latest_{params.model_suffix}.pt"))
 
 # ## Validation
-
-# In[13]:
-
-
-data, label = next(iter(val_dataloader))
-data = to_device(data)
-output = model.forward(data)
-
-
-# In[14]:
-
-
-flattened_output = output.argmax(dim=1).detach().cpu().numpy()
-flattened_label = label.numpy()
-
-
-# In[15]:
-
 
 def compute_hist(a, b, n):
     k = (a >= 0) & (a < n)

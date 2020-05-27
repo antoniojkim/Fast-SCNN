@@ -8,8 +8,17 @@ import torchx
 from PIL import Image
 from torchvision import transforms
 
+    
+paths = set(p for p in os.listdir("data") if p.startswith("2018"))
+val = {"20181204_135952", "20181107_132300"}
+test = {"20181204_191844"}
+datasets = {
+    "train": paths - val - test,
+    "val": val,
+    "test": test
+}
 
-class Dataset:
+class AudiDataset:
 
     classes = (
         "Sidebars",
@@ -48,11 +57,12 @@ class Dataset:
                     (torchx.utils.hex_to_rgb(class_list[c]), i + 1)
                     for i, c in enumerate(self.classes)
                 ]
-
-        self.images = list(
-            set(os.listdir(os.path.join(dataset_path, mode)))
-            & set(os.listdir(os.path.join(dataset_path, f"{mode}_labels")))
-        )
+                
+        self.images = [
+            os.path.join(self.dataset_path, date, "camera", "cam_front_center", image).replace("camera", "{type}")
+            for date in datasets[self.mode]
+            for image in os.listdir(os.path.join(self.dataset_path, date, "camera", "cam_front_center"))
+        ]
 
         self.normalization_mean = (0.485, 0.456, 0.406)
         self.normalization_std = (0.229, 0.224, 0.225)
@@ -69,52 +79,45 @@ class Dataset:
 
     def __len__(self):
         return len(self.images)
-
-    def __getitem__(self, index):
-        assert 0 <= index < len(self.images)
-
-        image = Image.open(
-            os.path.join(self.dataset_path, self.mode, self.images[index])
+    
+    def get_path(self, index):
+        return (
+           self.images[index].replace("{type}", "camera"),
+           self.images[index].replace("{type}", "label")
         )
-        image = transforms.functional.resized_crop(
+    
+    def resized_crop(self, image):
+        return transforms.functional.resized_crop(
             image,
             image.size[1] - self.crop_height,
             (image.size[0] - self.crop_width) // 2,
             self.crop_height,
             self.crop_width,
             (
-                int(image.size[1] * self.resize_scale),
-                int(image.size[0] * self.resize_scale),
+                int(self.crop_height * self.resize_scale),
+                int(self.crop_width * self.resize_scale),
             ),
         )
 
-        label = Image.open(
-            os.path.join(self.dataset_path, f"{self.mode}_labels", self.images[index])
-        )
-        label = transforms.functional.resized_crop(
-            label,
-            label.size[1] - self.crop_height,
-            (label.size[0] - self.crop_width) // 2,
-            self.crop_height,
-            self.crop_width,
-            (
-                int(label.size[1] * self.resize_scale),
-                int(label.size[0] * self.resize_scale),
-            ),
-        )
+    def __getitem__(self, index):
+        assert 0 <= index < len(self.images)
+
+        image_path, label_path = self.get_path(index)
+        
+        image = self.resized_crop(Image.open(image_path))
+        label = self.resized_crop(Image.open(label_path))
 
         if self.mode == "train" and np.random.random() > 0.5:
             image = transforms.functional.hflip(image)
             label = transforms.functional.hflip(label)
 
-        image = self.normalize(image).float()
-        label = np.array(label)
-
-        # One hot encode for cross entropy loss
-        label = torchx.utils.encode_array(label, self.class_list).astype(np.uint8)
-        label = torch.from_numpy(label).long()
-
-        return image, label
+        return (
+            self.normalize(image).float(),
+            # One hot encode for cross entropy loss
+             torch.from_numpy(
+                 torchx.utils.encode_array(np.array(label), self.class_list).astype(np.uint8)
+            ).long()
+        )
 
     def normalize(self, image):
         return self.to_tensor(image)

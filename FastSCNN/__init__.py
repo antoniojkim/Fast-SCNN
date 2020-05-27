@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .dataset.dataset import Dataset
+from .dataset.AudiDataset import AudiDataset
 from .model.FastSCNN import FastSCNN
 
-__all__ = ["Dataset", "FastSCNN"]
+__all__ = ["AudiDataset", "FastSCNN"]
