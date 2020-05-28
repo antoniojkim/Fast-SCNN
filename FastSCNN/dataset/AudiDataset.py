@@ -2,6 +2,7 @@
 import json
 import os
 
+import cv2
 import numpy as np
 import torch
 import torchx
@@ -87,12 +88,11 @@ class AudiDataset:
         )
     
     def resized_crop(self, image):
-        return transforms.functional.resized_crop(
-            image,
-            image.size[1] - self.crop_height,
-            (image.size[0] - self.crop_width) // 2,
-            self.crop_height,
-            self.crop_width,
+        return cv2.resize(
+            np.array(image)[
+                image.size[1] - self.crop_height : image.size[1],
+                (image.size[0] - self.crop_width) // 2 : (image.size[0] - self.crop_width) // 2 + self.crop_width
+            ],
             (
                 int(self.crop_height * self.resize_scale),
                 int(self.crop_width * self.resize_scale),
@@ -108,8 +108,8 @@ class AudiDataset:
         label = self.resized_crop(Image.open(label_path))
 
         if self.mode == "train" and np.random.random() > 0.5:
-            image = transforms.functional.hflip(image)
-            label = transforms.functional.hflip(label)
+            image = cv2.flip(image, 1)
+            label = cv2.flip(label, 1)
 
         return (
             self.normalize(image).float(),

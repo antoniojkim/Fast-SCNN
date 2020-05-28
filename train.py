@@ -51,7 +51,7 @@ for directory in ("train", "train_labels", "test", "test_labels", "val", "val_la
 # In[6]:
 
 
-num_classes = 2 if params.single_class else len(Dataset.classes) + 1
+num_classes = 2 if params.single_class else len(AudiDataset.classes) + 1
 
 
 # ## Training Dataset
@@ -71,6 +71,7 @@ train_dataloader = torch.utils.data.DataLoader(
     num_workers=params.num_workers,
     shuffle=True,
     drop_last=True,
+    pin_memory=True,
 )
 
 
@@ -87,7 +88,7 @@ val_dataset = AudiDataset(
     single_class=params.single_class,
 )
 val_dataloader = torch.utils.data.DataLoader(
-    val_dataset, batch_size=1, num_workers=params.num_workers, shuffle=True
+    val_dataset, batch_size=1, num_workers=params.num_workers, shuffle=True, pin_memory=True,
 )
 
 num_validation = min(params.num_validation, len(val_dataloader))
@@ -103,9 +104,9 @@ device = torch.device("cuda:" + params.cuda if params.use_gpu else "cpu")
 
 def to_device(tensor):
     if params.use_gpu:
-        #         torch.nn.DataParallel(model).cuda()
-        #         tensor.cuda()
-        return tensor.to(device)
+        # torch.nn.DataParallel(model).cuda()
+        return  tensor.cuda()
+        # return tensor.to(device)
     else:
         return tensor
 
