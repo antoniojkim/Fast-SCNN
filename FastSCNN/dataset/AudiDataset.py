@@ -94,8 +94,8 @@ class AudiDataset:
                 (image.size[0] - self.crop_width) // 2 : (image.size[0] - self.crop_width) // 2 + self.crop_width
             ],
             (
-                int(self.crop_height * self.resize_scale),
                 int(self.crop_width * self.resize_scale),
+                int(self.crop_height * self.resize_scale),
             ),
         )
 

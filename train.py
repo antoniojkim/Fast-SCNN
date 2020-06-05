@@ -32,7 +32,7 @@ if params.crop_height * 2 != params.crop_width:
 # In[4]:
 
 
-log = params.get_logger("FastSCNN", overwrite=True)
+log = params.get_logger("FastSCNN")
 
 
 # # Dataset
@@ -135,7 +135,10 @@ print("Number of Trainable Parameters: ", model.num_params())
 # load pretrained model if exists
 if params.pretrained_model_path is not None:
     print("loading model from %s ..." % params.pretrained_model_path)
-    model.load(params.pretrained_model_path)
+    try:
+        model.load(params.pretrained_model_path)
+    except RuntimeError:
+        pass
 
 model.save(os.path.join(params.save_model_path, f"latest_{params.model_suffix}.pt"))
 
