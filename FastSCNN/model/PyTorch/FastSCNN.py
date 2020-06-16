@@ -164,7 +164,7 @@ class FastSCNN(torchx.nn.Module):
             torch.nn.Conv2d(in_channels=128, out_channels=num_classes, kernel_size=1)
         )
 
-    def forward(self, x):
+    def forward(self, x, softmax=True):
         size = x.size()[2:]
         higher_res_features = self.learning_to_downsample(x)
         x = self.global_feature_extractor(higher_res_features)
@@ -173,4 +173,7 @@ class FastSCNN(torchx.nn.Module):
 
         x = F.interpolate(x, list(map(int, size)), mode="bilinear", align_corners=True)
 
+        if softmax:
+            return F.softmax(x)
+        
         return x

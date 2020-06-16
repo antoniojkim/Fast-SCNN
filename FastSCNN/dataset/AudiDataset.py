@@ -27,7 +27,6 @@ class AudiDataset:
         "Solid line",
         "Zebra crossing",
         "Dashed line",
-        "Painted driv. instr.",
     )
 
     def __init__(
@@ -38,6 +37,8 @@ class AudiDataset:
         mode="train",
         dataset_path="data",
         single_class=False,
+        normalization_mean = (0.485, 0.456, 0.406),
+        normalization_std = (0.229, 0.224, 0.225)
     ):
         self.crop_height = crop_height
         self.crop_width = crop_width
@@ -64,9 +65,10 @@ class AudiDataset:
             for date in datasets[self.mode]
             for image in os.listdir(os.path.join(self.dataset_path, date, "camera", "cam_front_center"))
         ]
+        self.images.sort()
 
-        self.normalization_mean = (0.485, 0.456, 0.406)
-        self.normalization_std = (0.229, 0.224, 0.225)
+        self.normalization_mean = normalization_mean
+        self.normalization_std = normalization_std
 
         # normalization
         self.to_tensor = transforms.Compose(

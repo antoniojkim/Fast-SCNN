@@ -4,3 +4,5 @@ params.yml
 *checkpoints/
 data
 log.txt
+examples/
+
